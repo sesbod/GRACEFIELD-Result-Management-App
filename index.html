@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Result Management System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
+            --success-color: #27ae60;
+            --danger-color: #e74c3c;
+            --light-bg: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--light-bg);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .hidden { display: none; }
+
+        /* Login Styles */
+        #login-section {
+            max-width: 400px;
+            margin: 100px auto;
+            text-align: center;
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover { background-color: #2980b9; }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th { background-color: var(--primary-color); color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        /* Report Card Print Styles */
+        #report-card-template {
+            padding: 40px;
+            border: 5px double var(--primary-color);
+            background: white;
+            width: 800px;
+            margin: auto;
+        }
+
+        .report-header { text-align: center; margin-bottom: 30px; }
+        .student-info { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 20px; }
+
+        @media print {
+            .no-print { display: none; }
+            body { background: white; }
+            .container { box-shadow: none; width: 100%; }
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .nav-tabs button {
+            width: auto;
+            background: #eee;
+            color: #333;
+        }
+
+        .nav-tabs button.active {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .badge-admin { background: #ffd700; color: #000; }
+        .badge-teacher { background: #cce5ff; color: #004085; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- Login Section -->
+    <div id="login-section" class="container">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <img src="img/GRACEFIELD Logo.png" alt="GRACEFIELD Logo" style="max-width: 150px;">
+        </div>
+        <h2>GRACEFIELD Montessori Academy</h2>
+        <h3>Result Portal</h3>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <p style="font-size: 0.8em; color: #666;">Demo: admin/admin, teacher1/teacher1 (Math), teacher2/teacher2 (English)</p>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard-section" class="container hidden">
+        <header>
+            <div>
+                <h1 id="user-welcome">Welcome</h1>
+                <span id="role-badge" class="badge">Role</span>
+            </div>
+            <button onclick="logout()" style="width: auto;" class="no-print">Logout</button>
+        </header>
+
+        <div id="admin-controls" class="hidden no-print">
+            <div class="nav-tabs">
+                <button onclick="switchTab('broadsheet')" id="tab-broadsheet">Master Broadsheet</button>
+                <button onclick="switchTab('manage')" id="tab-manage">Manage Students</button>
+            </div>
+        </div>
+
+        <div id="teacher-controls" class="hidden no-print">
+            <h3 id="subject-heading">Subject: </h3>
+        </div>
+
+        <!-- Broadsheet View -->
+        <div id="broadsheet-view" class="view">
+            <h3>Master Broadsheet</h3>
+            <div id="broadsheet-container"></div>
+        </div>
+
+        <!-- Teacher Subject View -->
+        <div id="subject-view" class="view hidden">
+            <h3>Enter Marks</h3>
+            <table id="marks-entry-table">
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Score (0-100)</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="marks-body"></tbody>
+            </table>
+        </div>
+
+        <!-- Manage Students View -->
+        <div id="manage-view" class="view hidden">
+            <h3>Add New Student</h3>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="new-student-name" placeholder="Student Full Name">
+                <button onclick="addStudent()" style="width: auto;">Add Student</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Card Modal (Hidden usually) -->
+    <div id="report-card-modal" class="hidden">
+        <div class="no-print" style="text-align: center; margin: 20px;">
+            <button onclick="generatePDF()" style="width: auto; background: var(--success-color);">Download PDF</button>
+            <button onclick="closeReport()" style="width: auto; background: var(--danger-color);">Close</button>
+        </div>
+        <div id="report-card-template">
+            <div class="report-header">
+                <img src="img/GRACEFIELD Logo.png" alt="GRACEFIELD Logo" style="max-width: 120px; margin-bottom: 10px;">
+                <h1>GRACEFIELD Montessori Academy</h1>
+                <p>Academic Progress Report</p>
+            </div>
+            <div class="student-info">
+                <div><strong>Student Name:</strong> <span id="rep-name"></span></div>
+                <div><strong>Term:</strong> First Term 2023/2024</div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Score</th>
+                        <th>Grade</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody id="rep-marks-body"></tbody>
+            </table>
+            <div style="margin-top: 30px; display: flex; justify-content: space-between;">
+                <div>Principal's Signature: ________________</div>
+                <div>Date: <span id="rep-date"></span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initial Data Setup
+    const USERS = {
+        'admin': { role: 'admin', name: 'Administrator' },
+        'teacher1': { role: 'teacher', name: 'Mr. Smith', subject: 'Mathematics' },
+        'teacher2': { role: 'teacher', name: 'Ms. Davis', subject: 'English' }
+    };
+
+    let students = JSON.parse(localStorage.getItem('rms_students')) || [
+        { id: 1, name: 'John Doe' },
+        { id: 2, name: 'Jane Wilson' },
+        { id: 3, name: 'Robert Brown' }
+    ];
+
+    let results = JSON.parse(localStorage.getItem('rms_results')) || [
+        { studentId: 1, subject: 'Mathematics', score: 85 },
+        { studentId: 1, subject: 'English', score: 78 },
+        { studentId: 2, subject: 'Mathematics', score: 92 },
+        { studentId: 2, subject: 'English', score: 88 }
+    ];
+
+    let currentUser = null;
+
+    // Auth Functions
+    function login() {
+        const user = document.getElementById('username').value;
+        if (USERS[user]) {
+            currentUser = USERS[user];
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+            setupDashboard();
+        } else {
+            alert('Invalid Login');
+        }
+    }
+
+    function logout() {
+        currentUser = null;
+        document.getElementById('login-section').classList.remove('hidden');
+        document.getElementById('dashboard-section').classList.add('hidden');
+        document.getElementById('report-card-modal').classList.add('hidden');
+    }
+
+    function setupDashboard() {
+        document.getElementById('user-welcome').innerText = `Welcome, ${currentUser.name}`;
+        const badge = document.getElementById('role-badge');
+        badge.innerText = currentUser.role.toUpperCase();
+        badge.className = `badge badge-${currentUser.role}`;
+
+        if (currentUser.role === 'admin') {
+            document.getElementById('admin-controls').classList.remove('hidden');
+            document.getElementById('teacher-controls').classList.add('hidden');
+            renderBroadsheet();
+            switchTab('broadsheet');
+        } else {
+            document.getElementById('admin-controls').classList.add('hidden');
+            document.getElementById('teacher-controls').classList.remove('hidden');
+            document.getElementById('subject-heading').innerText = `Subject: ${currentUser.subject}`;
+            renderTeacherView();
+            switchTab('subject');
+        }
+    }
+
+    function switchTab(tab) {
+        document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+        if (tab === 'broadsheet') {
+            document.getElementById('broadsheet-view').classList.remove('hidden');
+        } else if (tab === 'manage') {
+            document.getElementById('manage-view').classList.remove('hidden');
+        } else if (tab === 'subject') {
+            document.getElementById('subject-view').classList.remove('hidden');
+        }
+    }
+
+    // Teacher Functions
+    function renderTeacherView() {
+        const tbody = document.getElementById('marks-body');
+        tbody.innerHTML = '';
+        
+        students.forEach(student => {
+            const result = results.find(r => r.studentId === student.id && r.subject === currentUser.subject);
+            const score = result ? result.score : '';
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${student.name}</td>
+                <td><input type="number" value="${score}" id="score-${student.id}" min="0" max="100"></td>
+                <td><button onclick="saveScore(${student.id})" style="width: auto;">Save</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function saveScore(studentId) {
+        const score = parseInt(document.getElementById(`score-${studentId}`).value);
+        if (isNaN(score) || score < 0 || score > 100) {
+            alert('Please enter a valid score between 0 and 100');
+            return;
+        }
+
+        const existingIndex = results.findIndex(r => r.studentId === studentId && r.subject === currentUser.subject);
+        if (existingIndex > -1) {
+            results[existingIndex].score = score;
+        } else {
+            results.push({ studentId, subject: currentUser.subject, score });
+        }
+
+        localStorage.setItem('rms_results', JSON.stringify(results));
+        alert('Score saved successfully!');
+    }
+
+    // Admin Functions
+    function renderBroadsheet() {
+        const container = document.getElementById('broadsheet-container');
+        const subjects = [...new Set(results.map(r => r.subject))];
+        if (subjects.length === 0) subjects.push('Mathematics', 'English');
+
+        let html = `<table><thead><tr><th>Student</th>`;
+        subjects.forEach(s => html += `<th>${s}</th>`);
+        html += `<th>Average</th><th>Action</th></tr></thead><tbody>`;
+
+        students.forEach(student => {
+            html += `<tr><td>${student.name}</td>`;
+            let total = 0;
+            let count = 0;
+            subjects.forEach(s => {
+                const res = results.find(r => r.studentId === student.id && r.subject === s);
+                const score = res ? res.score : '-';
+                html += `<td>${score}</td>`;
+                if (res) { total += res.score; count++; }
+            });
+            const avg = count > 0 ? (total / count).toFixed(1) : '-';
+            html += `<td><strong>${avg}</strong></td>`;
+            html += `<td><button onclick="viewReportCard(${student.id})" style="width: auto;">View Report</button></td></tr>`;
+        });
+
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+    }
+
+    function addStudent() {
+        const name = document.getElementById('new-student-name').value;
+        if (!name) return;
+        const newId = students.length > 0 ? Math.max(...students.map(s => s.id)) + 1 : 1;
+        students.push({ id: newId, name });
+        localStorage.setItem('rms_students', JSON.stringify(students));
+        document.getElementById('new-student-name').value = '';
+        renderBroadsheet();
+        alert('Student added!');
+    }
+
+    // Report Card Functions
+    function getGrade(score) {
+        if (score >= 80) return 'A';
+        if (score >= 70) return 'B';
+        if (score >= 60) return 'C';
+        if (score >= 50) return 'D';
+        return 'F';
+    }
+
+    function getRemarks(score) {
+        if (score >= 80) return 'Excellent';
+        if (score >= 70) return 'Very Good';
+        if (score >= 60) return 'Good';
+        if (score >= 50) return 'Pass';
+        return 'Fail';
+    }
+
+    function viewReportCard(studentId) {
+        const student = students.find(s => s.id === studentId);
+        const studentResults = results.filter(r => r.studentId === studentId);
+
+        document.getElementById('rep-name').innerText = student.name;
+        document.getElementById('rep-date').innerText = new Date().toLocaleDateString();
+
+        const tbody = document.getElementById('rep-marks-body');
+        tbody.innerHTML = '';
+
+        studentResults.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${r.subject}</td>
+                <td>${r.score}</td>
+                <td>${getGrade(r.score)}</td>
+                <td>${getRemarks(r.score)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('dashboard-section').classList.add('hidden');
+        document.getElementById('report-card-modal').classList.remove('hidden');
+    }
+
+    function closeReport() {
+        document.getElementById('report-card-modal').classList.add('hidden');
+        document.getElementById('dashboard-section').classList.remove('hidden');
+    }
+
+    function generatePDF() {
+        const element = document.getElementById('report-card-template');
+        const opt = {
+            margin: 0.5,
+            filename: `Report_Card_${document.getElementById('rep-name').innerText}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
+    }
+</script>
+
+</body>
+</html>
