@@ -6,6 +6,10 @@
     <title>Result Management System</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         :root {
             --primary-color: #2c3e50;
             --secondary-color: #34495e;
@@ -87,19 +91,37 @@
 
         /* Report Card Print Styles */
         #report-card-template {
-            padding: 25px;
+            padding: 20px;
             border: 5px double var(--primary-color);
             background: white;
-            width: 800px;
+            width: 750px;
             margin: auto;
+            position: relative;
         }
 
         .report-header { 
             display: flex; 
             align-items: center; 
-            justify-content: center; 
-            gap: 20px;
-            margin-bottom: 15px; 
+            margin-bottom: 15px;
+            padding: 0 10px;
+            width: 100%;
+        }
+        
+        .header-text {
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        .logo-img {
+            width: 100px;
+            height: auto;
+            flex-shrink: 0;
+        }
+        
+        /* Spacer to perfectly center the text */
+        .header-spacer {
+            width: 100px;
+            flex-shrink: 0;
         }
         
         #report-card-template table {
@@ -256,13 +278,14 @@
         </div>
         <div id="report-card-template">
             <div class="report-header">
-                <img src="img/GRACEFIELD Logo.png" alt="GRACEFIELD Logo" style="max-width: 100px;">
-                <div style="text-align: center;">
-                    <h1 style="margin: 0; font-size: 26px;">GRACEFIELD Montessori Academy</h1>
-                    <p id="school-motto" contenteditable="true" class="editable-text" style="font-style: italic; display: block; margin: 2px 0;">Enter School Motto Here...</p>
-                    <p id="school-address" contenteditable="true" class="editable-text" style="display: block; margin: 2px 0;">Enter School Address Here...</p>
-                    <p style="margin: 5px 0; font-size: 16px;"><strong>Academic Progress Report</strong></p>
+                <img src="img/GRACEFIELD Logo.png" alt="GRACEFIELD Logo" class="logo-img">
+                <div class="header-text">
+                    <h1 style="margin: 0; font-size: 22px; color: var(--primary-color); text-transform: uppercase; letter-spacing: 1px;">GRACEFIELD MONTESSORI ACADEMY</h1>
+                    <p id="school-motto" contenteditable="true" class="editable-text" style="font-style: italic; display: block; margin: 2px 0; color: #555; font-size: 14px;">Enter School Motto Here...</p>
+                    <p id="school-address" contenteditable="true" class="editable-text" style="display: block; margin: 2px 0; font-size: 12px;">Enter School Address Here...</p>
+                    <p style="margin: 5px 0; font-size: 16px; text-decoration: underline;"><strong>ACADEMIC PROGRESS REPORT</strong></p>
                 </div>
+                <div class="header-spacer"></div>
             </div>
             
             <div class="student-info">
@@ -625,10 +648,10 @@
     function generatePDF() {
         const element = document.getElementById('report-card-template');
         const opt = {
-            margin: 0.5,
+            margin: [0.3, 0.3, 0.3, 0.3],
             filename: `Report_Card_${document.getElementById('rep-name').innerText}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
             jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
         };
         html2pdf().set(opt).from(element).save();
