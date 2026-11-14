@@ -87,15 +87,37 @@
 
         /* Report Card Print Styles */
         #report-card-template {
-            padding: 40px;
+            padding: 25px;
             border: 5px double var(--primary-color);
             background: white;
             width: 800px;
             margin: auto;
         }
 
-        .report-header { text-align: center; margin-bottom: 30px; }
-        .student-info { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 20px; }
+        .report-header { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 20px;
+            margin-bottom: 15px; 
+        }
+        
+        #report-card-template table {
+            margin-top: 10px;
+        }
+        
+        #report-card-template table th,
+        #report-card-template table td {
+            padding: 5px 8px;
+            font-size: 13px;
+        }
+
+        .student-info { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            margin-bottom: 10px; 
+            font-size: 14px;
+        }
 
         @media print {
             .no-print { display: none; }
@@ -234,10 +256,13 @@
         </div>
         <div id="report-card-template">
             <div class="report-header">
-                <img src="img/GRACEFIELD Logo.png" alt="GRACEFIELD Logo" style="max-width: 120px; margin-bottom: 10px;">
-                <h1>GRACEFIELD Montessori Academy</h1>
-                <p id="school-address" contenteditable="true" class="editable-text">Enter School Address Here...</p>
-                <p><strong>Academic Progress Report</strong></p>
+                <img src="img/GRACEFIELD Logo.png" alt="GRACEFIELD Logo" style="max-width: 100px;">
+                <div style="text-align: center;">
+                    <h1 style="margin: 0; font-size: 26px;">GRACEFIELD Montessori Academy</h1>
+                    <p id="school-motto" contenteditable="true" class="editable-text" style="font-style: italic; display: block; margin: 2px 0;">Enter School Motto Here...</p>
+                    <p id="school-address" contenteditable="true" class="editable-text" style="display: block; margin: 2px 0;">Enter School Address Here...</p>
+                    <p style="margin: 5px 0; font-size: 16px;"><strong>Academic Progress Report</strong></p>
+                </div>
             </div>
             
             <div class="student-info">
@@ -517,10 +542,12 @@
         // Load additional details from localStorage if they exist
         const details = JSON.parse(localStorage.getItem(`report_details_${studentId}`)) || {};
         const schoolAddress = localStorage.getItem('school_address') || "Enter School Address Here...";
+        const schoolMotto = localStorage.getItem('school_motto') || "Enter School Motto Here...";
 
         document.getElementById('rep-name').innerText = student.name;
         document.getElementById('rep-date').innerText = new Date().toLocaleDateString();
         document.getElementById('school-address').innerText = schoolAddress;
+        document.getElementById('school-motto').innerText = schoolMotto;
         
         // Fill editable details
         document.getElementById('rep-class').innerText = details.class || 'Enter Class';
@@ -586,7 +613,8 @@
 
         localStorage.setItem(`report_details_${student.id}`, JSON.stringify(details));
         localStorage.setItem('school_address', document.getElementById('school-address').innerText);
-        alert('Report details and school address saved successfully!');
+        localStorage.setItem('school_motto', document.getElementById('school-motto').innerText);
+        alert('Report details, motto, and school address saved successfully!');
     }
 
     function closeReport() {
