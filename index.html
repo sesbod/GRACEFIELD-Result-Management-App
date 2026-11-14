@@ -128,6 +128,20 @@
         }
         .badge-admin { background: #ffd700; color: #000; }
         .badge-teacher { background: #cce5ff; color: #004085; }
+
+        .editable-text {
+            border-bottom: 1px dashed #ccc;
+            padding: 2px 5px;
+            min-width: 50px;
+            display: inline-block;
+        }
+        .editable-text:focus {
+            outline: none;
+            background: #fff9c4;
+            border-bottom: 1px solid var(--accent-color);
+        }
+        
+        .admin-only.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -180,7 +194,10 @@
                 <thead>
                     <tr>
                         <th>Student Name</th>
-                        <th>Score (0-100)</th>
+                        <th>CA (40)</th>
+                        <th>Exam (60)</th>
+                        <th>Total (100)</th>
+                        <th>Subject Teacher's Remark</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -190,43 +207,76 @@
 
         <!-- Manage Students View -->
         <div id="manage-view" class="view hidden">
-            <h3>Add New Student</h3>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="new-student-name" placeholder="Student Full Name">
-                <button onclick="addStudent()" style="width: auto;">Add Student</button>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h3>Add New Student</h3>
+                    <input type="text" id="new-student-name" placeholder="Student Full Name">
+                    <button onclick="addStudent()" style="width: auto;">Add Student</button>
+                </div>
+                <div>
+                    <h3>Manage Subjects</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="new-subject-name" placeholder="Subject Name">
+                        <button onclick="addSubject()" style="width: auto;">Add Subject</button>
+                    </div>
+                    <ul id="subject-list" style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px;"></ul>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Report Card Modal (Hidden usually) -->
     <div id="report-card-modal" class="hidden">
-        <div class="no-print" style="text-align: center; margin: 20px;">
+        <div class="no-print" style="text-align: center; margin: 20px; display: flex; justify-content: center; gap: 10px;">
             <button onclick="generatePDF()" style="width: auto; background: var(--success-color);">Download PDF</button>
+            <button onclick="saveReportDetails()" id="btn-save-details" style="width: auto; background: var(--accent-color);" class="admin-only hidden">Save Report Details</button>
             <button onclick="closeReport()" style="width: auto; background: var(--danger-color);">Close</button>
         </div>
         <div id="report-card-template">
             <div class="report-header">
                 <img src="img/GRACEFIELD Logo.png" alt="GRACEFIELD Logo" style="max-width: 120px; margin-bottom: 10px;">
                 <h1>GRACEFIELD Montessori Academy</h1>
-                <p>Academic Progress Report</p>
+                <p id="school-address" contenteditable="true" class="editable-text">Enter School Address Here...</p>
+                <p><strong>Academic Progress Report</strong></p>
             </div>
+            
             <div class="student-info">
-                <div><strong>Student Name:</strong> <span id="rep-name"></span></div>
-                <div><strong>Term:</strong> First Term 2023/2024</div>
+                <div>
+                    <strong>Student Name:</strong> <span id="rep-name"></span><br>
+                    <strong>Class:</strong> <span id="rep-class" contenteditable="true" class="editable-text">Enter Class</span><br>
+                    <strong>Admission No:</strong> <span id="rep-adm-no" contenteditable="true" class="editable-text">---</span>
+                </div>
+                <div>
+                    <strong>Term:</strong> <span id="rep-term" contenteditable="true" class="editable-text">First Term 2023/2024</span><br>
+                    <strong>Attendance:</strong> <span id="rep-attendance" contenteditable="true" class="editable-text">0</span> / <span id="rep-total-days" contenteditable="true" class="editable-text">0</span> days<br>
+                    <strong>Position:</strong> <span id="rep-position">--</span>
+                </div>
             </div>
+
             <table>
                 <thead>
                     <tr>
                         <th>Subject</th>
-                        <th>Score</th>
+                        <th>CA (40)</th>
+                        <th>Exam (60)</th>
+                        <th>Total (100)</th>
                         <th>Grade</th>
-                        <th>Remarks</th>
+                        <th>Teacher's Remark</th>
                     </tr>
                 </thead>
                 <tbody id="rep-marks-body"></tbody>
             </table>
-            <div style="margin-top: 30px; display: flex; justify-content: space-between;">
-                <div>Principal's Signature: ________________</div>
+
+            <div style="margin-top: 20px;">
+                <p><strong>Class Teacher's Remark:</strong> <span id="rep-class-teacher-remark" contenteditable="true" class="editable-text">_________________</span></p>
+                <p><strong>Principal's Remark:</strong> <span id="rep-principal-remark" contenteditable="true" class="editable-text">_________________</span></p>
+            </div>
+
+            <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div style="text-align: center;">
+                    <div style="border-bottom: 1px solid black; width: 200px; margin-bottom: 5px;"></div>
+                    Principal's Signature
+                </div>
                 <div>Date: <span id="rep-date"></span></div>
             </div>
         </div>
@@ -313,64 +363,131 @@
         tbody.innerHTML = '';
         
         students.forEach(student => {
-            const result = results.find(r => r.studentId === student.id && r.subject === currentUser.subject);
-            const score = result ? result.score : '';
+            const res = results.find(r => r.studentId === student.id && r.subject === currentUser.subject) || { ca: 0, exam: 0, remark: '' };
             
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${student.name}</td>
-                <td><input type="number" value="${score}" id="score-${student.id}" min="0" max="100"></td>
+                <td><input type="number" value="${res.ca || 0}" id="ca-${student.id}" min="0" max="40" style="width: 70px;"></td>
+                <td><input type="number" value="${res.exam || 0}" id="exam-${student.id}" min="0" max="60" style="width: 70px;"></td>
+                <td><strong id="tot-${student.id}">${(res.ca || 0) + (res.exam || 0)}</strong></td>
+                <td><input type="text" value="${res.remark || ''}" id="rem-${student.id}" placeholder="Remark"></td>
                 <td><button onclick="saveScore(${student.id})" style="width: auto;">Save</button></td>
             `;
             tbody.appendChild(tr);
+
+            // Real-time total update
+            const caInput = tr.querySelector(`#ca-${student.id}`);
+            const exInput = tr.querySelector(`#exam-${student.id}`);
+            const totDisp = tr.querySelector(`#tot-${student.id}`);
+            [caInput, exInput].forEach(input => {
+                input.addEventListener('input', () => {
+                    totDisp.innerText = (parseInt(caInput.value) || 0) + (parseInt(exInput.value) || 0);
+                });
+            });
         });
     }
 
     function saveScore(studentId) {
-        const score = parseInt(document.getElementById(`score-${studentId}`).value);
-        if (isNaN(score) || score < 0 || score > 100) {
-            alert('Please enter a valid score between 0 and 100');
+        const ca = parseInt(document.getElementById(`ca-${studentId}`).value) || 0;
+        const exam = parseInt(document.getElementById(`exam-${studentId}`).value) || 0;
+        const remark = document.getElementById(`rem-${studentId}`).value;
+        
+        if (ca < 0 || ca > 40 || exam < 0 || exam > 60) {
+            alert('Invalid marks! CA max 40, Exam max 60.');
             return;
         }
 
         const existingIndex = results.findIndex(r => r.studentId === studentId && r.subject === currentUser.subject);
+        const scoreData = { studentId, subject: currentUser.subject, ca, exam, score: ca + exam, remark };
+
         if (existingIndex > -1) {
-            results[existingIndex].score = score;
+            results[existingIndex] = scoreData;
         } else {
-            results.push({ studentId, subject: currentUser.subject, score });
+            results.push(scoreData);
         }
 
         localStorage.setItem('rms_results', JSON.stringify(results));
-        alert('Score saved successfully!');
+        alert('Score and remark saved!');
     }
 
     // Admin Functions
     function renderBroadsheet() {
         const container = document.getElementById('broadsheet-container');
-        const subjects = [...new Set(results.map(r => r.subject))];
-        if (subjects.length === 0) subjects.push('Mathematics', 'English');
+        const subjects = getSubjects();
+        
+        // Calculate Totals and Positions
+        const studentTotals = students.map(s => {
+            const studentResults = results.filter(r => r.studentId === s.id);
+            const total = studentResults.reduce((sum, r) => sum + (r.score || 0), 0);
+            return { id: s.id, total };
+        }).sort((a, b) => b.total - a.total);
 
-        let html = `<table><thead><tr><th>Student</th>`;
-        subjects.forEach(s => html += `<th>${s}</th>`);
-        html += `<th>Average</th><th>Action</th></tr></thead><tbody>`;
+        let html = `<div style="overflow-x: auto;"><table><thead><tr><th>Student</th>`;
+        subjects.forEach(s => html += `<th>${s}<br><small>CA/Ex/Tot</small></th>`);
+        html += `<th>Total Score</th><th>Average</th><th>Pos.</th><th>Grade</th><th>Action</th></tr></thead><tbody>`;
 
         students.forEach(student => {
-            html += `<tr><td>${student.name}</td>`;
-            let total = 0;
+            const pos = studentTotals.findIndex(st => st.id === student.id) + 1;
+            html += `<tr><td><strong>${student.name}</strong></td>`;
+            let totalScore = 0;
             let count = 0;
             subjects.forEach(s => {
                 const res = results.find(r => r.studentId === student.id && r.subject === s);
-                const score = res ? res.score : '-';
-                html += `<td>${score}</td>`;
-                if (res) { total += res.score; count++; }
+                if (res) {
+                    html += `<td>${res.ca}/${res.exam}/<strong>${res.score}</strong></td>`;
+                    totalScore += res.score;
+                    count++;
+                } else {
+                    html += `<td>-/-/-</td>`;
+                }
             });
-            const avg = count > 0 ? (total / count).toFixed(1) : '-';
-            html += `<td><strong>${avg}</strong></td>`;
+            const avg = count > 0 ? (totalScore / count).toFixed(1) : 0;
+            html += `<td>${totalScore}</td><td>${avg}</td><td>${pos}</td><td>${getGrade(avg)}</td>`;
             html += `<td><button onclick="viewReportCard(${student.id})" style="width: auto;">View Report</button></td></tr>`;
         });
 
-        html += `</tbody></table>`;
+        html += `</tbody></table></div>`;
         container.innerHTML = html;
+        renderSubjectList();
+    }
+
+    function getSubjects() {
+        return JSON.parse(localStorage.getItem('rms_subjects')) || ['Mathematics', 'English'];
+    }
+
+    function addSubject() {
+        const name = document.getElementById('new-subject-name').value.trim();
+        if (!name) return;
+        let subjects = getSubjects();
+        if (!subjects.includes(name)) {
+            subjects.push(name);
+            localStorage.setItem('rms_subjects', JSON.stringify(subjects));
+            document.getElementById('new-subject-name').value = '';
+            renderBroadsheet();
+            alert('Subject added!');
+        }
+    }
+
+    function renderSubjectList() {
+        const list = document.getElementById('subject-list');
+        if (!list) return;
+        list.innerHTML = '';
+        getSubjects().forEach(s => {
+            const li = document.createElement('li');
+            li.style.display = 'flex';
+            li.style.justifyContent = 'space-between';
+            li.style.marginBottom = '5px';
+            li.innerHTML = `${s} <button onclick="deleteSubject('${s}')" style="width:auto; padding: 2px 10px; background:red;">X</button>`;
+            list.appendChild(li);
+        });
+    }
+
+    function deleteSubject(sub) {
+        if (!confirm(`Delete ${sub}?`)) return;
+        let subjects = getSubjects().filter(s => s !== sub);
+        localStorage.setItem('rms_subjects', JSON.stringify(subjects));
+        renderBroadsheet();
     }
 
     function addStudent() {
@@ -393,37 +510,83 @@
         return 'F';
     }
 
-    function getRemarks(score) {
-        if (score >= 80) return 'Excellent';
-        if (score >= 70) return 'Very Good';
-        if (score >= 60) return 'Good';
-        if (score >= 50) return 'Pass';
-        return 'Fail';
-    }
-
     function viewReportCard(studentId) {
         const student = students.find(s => s.id === studentId);
         const studentResults = results.filter(r => r.studentId === studentId);
+        
+        // Load additional details from localStorage if they exist
+        const details = JSON.parse(localStorage.getItem(`report_details_${studentId}`)) || {};
+        const schoolAddress = localStorage.getItem('school_address') || "Enter School Address Here...";
 
         document.getElementById('rep-name').innerText = student.name;
         document.getElementById('rep-date').innerText = new Date().toLocaleDateString();
+        document.getElementById('school-address').innerText = schoolAddress;
+        
+        // Fill editable details
+        document.getElementById('rep-class').innerText = details.class || 'Enter Class';
+        document.getElementById('rep-adm-no').innerText = details.admNo || '---';
+        document.getElementById('rep-term').innerText = details.term || 'First Term 2023/2024';
+        document.getElementById('rep-attendance').innerText = details.attendance || '0';
+        document.getElementById('rep-total-days').innerText = details.totalDays || '0';
+        document.getElementById('rep-class-teacher-remark').innerText = details.teacherRemark || '_________________';
+        document.getElementById('rep-principal-remark').innerText = details.principalRemark || '_________________';
+
+        // Calculate Position
+        const studentTotals = students.map(s => {
+            const res = results.filter(r => r.studentId === s.id);
+            return { id: s.id, total: res.reduce((sum, r) => sum + (r.score || 0), 0) };
+        }).sort((a, b) => b.total - a.total);
+        const pos = studentTotals.findIndex(st => st.id === studentId) + 1;
+        const suffix = (pos % 10 == 1 && pos != 11) ? 'st' : (pos % 10 == 2 && pos != 12) ? 'nd' : (pos % 10 == 3 && pos != 13) ? 'rd' : 'th';
+        document.getElementById('rep-position').innerText = pos + suffix;
 
         const tbody = document.getElementById('rep-marks-body');
         tbody.innerHTML = '';
 
-        studentResults.forEach(r => {
+        getSubjects().forEach(sub => {
+            const r = studentResults.find(res => res.subject === sub) || { ca: '-', exam: '-', score: '-', remark: '-' };
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${r.subject}</td>
-                <td>${r.score}</td>
-                <td>${getGrade(r.score)}</td>
-                <td>${getRemarks(r.score)}</td>
+                <td>${sub}</td>
+                <td>${r.ca}</td>
+                <td>${r.exam}</td>
+                <td><strong>${r.score}</strong></td>
+                <td>${r.score !== '-' ? getGrade(r.score) : '-'}</td>
+                <td>${r.remark || '-'}</td>
             `;
             tbody.appendChild(tr);
         });
 
         document.getElementById('dashboard-section').classList.add('hidden');
         document.getElementById('report-card-modal').classList.remove('hidden');
+
+        if (currentUser.role === 'admin') {
+            document.getElementById('btn-save-details').classList.remove('hidden');
+            document.querySelectorAll('.editable-text').forEach(el => el.contentEditable = "true");
+        } else {
+            document.getElementById('btn-save-details').classList.add('hidden');
+            document.querySelectorAll('.editable-text').forEach(el => el.contentEditable = "false");
+        }
+    }
+
+    function saveReportDetails() {
+        const studentName = document.getElementById('rep-name').innerText;
+        const student = students.find(s => s.name === studentName);
+        if (!student) return;
+
+        const details = {
+            class: document.getElementById('rep-class').innerText,
+            admNo: document.getElementById('rep-adm-no').innerText,
+            term: document.getElementById('rep-term').innerText,
+            attendance: document.getElementById('rep-attendance').innerText,
+            totalDays: document.getElementById('rep-total-days').innerText,
+            teacherRemark: document.getElementById('rep-class-teacher-remark').innerText,
+            principalRemark: document.getElementById('rep-principal-remark').innerText
+        };
+
+        localStorage.setItem(`report_details_${student.id}`, JSON.stringify(details));
+        localStorage.setItem('school_address', document.getElementById('school-address').innerText);
+        alert('Report details and school address saved successfully!');
     }
 
     function closeReport() {
